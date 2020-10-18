@@ -1,6 +1,8 @@
-const SerialPort = require('serialport')
-const Readline = require('@serialport/parser-readline')
-const port = new SerialPort('/dev/ttyACM0', { baudRate: 115200 })
+const SerialPort = require('serialport');
+const Readline = require('@serialport/parser-readline');
+const fetch = require('node-fetch');
+// const port = new SerialPort('/dev/ttyACM0', { baudRate: 115200 });
+const port = new SerialPort('COM3', { baudRate: 115200 });
 const parser = new Readline(); // make a new parser to read ASCII lines
 port.pipe(parser); // pipe the serial stream to the parser
 
@@ -29,6 +31,7 @@ parser.on('data', (input)=>{
     if(i === LIMIT) {
       // Insert endpoint calling here. prob make this async but im lazy
       console.log(storedData);
+      sendData(storedData);
       storedData = [];
       i = 0;
     } else {
@@ -40,6 +43,22 @@ parser.on('data', (input)=>{
       }
     }
 });
+// Database Endpoint
+const URL = 'https://us-central1-gene-pool-hack-the-u.cloudfunctions.net/upload_biometrics';
+// Functions compiles the data and send it to the database
+function sendData(data) {
+  // Creates a new JObject to follow protocol
+  const body = {
+    "userId": "test_id",
+    "data": data
+  };
+  // Post request in to the link
+  fetch(URL, { method: 'POST',headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+    .then((res)=>{
+      // Returns result
+      console.log(res);
+  });
+}
 
 function addData(idx, input) {
   storedData[idx] = input;
@@ -54,10 +73,10 @@ function parseSerialData(input) {
   const temp = dataKey[3][1];
   const tempSplit = temp.split('*');
   dataKey[3][1] = tempSplit;
-
+  dataKey[3][0] = 'temperature';
   //Remove BPM
   const heartrate = dataKey[4][1];
-  dataKey[4][1] = heartrate.slice(0, heartrate.length - 3);
+  dataKey[4][1] = heartrate.slice(0, heartrate.length - 5);
 
   let data = {};
   dataKey.forEach(element => {
